@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useState, useEffect } from 'react';
 import backend from '../helpers/pixabay-api';
 import Searchbar from './Searchbar/Searchbar';
 import ImageGallery from './ImageGallery/ImageGallery';
@@ -8,93 +8,91 @@ import Loader from './Loader/Loader';
 import Modal from './Modal/Modal';
 import css from './App.module.css';
 
-class App extends Component {
-  imagesPerPage = 12;
+const App = () => {
+  const imagesPerPage = 12;
+  const verboseLogging = false;
 
-  state = {
-    images: [],
-    totalImages: 0,
-    loading: false,
-    error: null,
-    searchQuery: '',
-    page: 1,
-    showModal: false,
-    largeImageURL: '',
-  };
+  const [images, setImages] = useState([]);
+  const [totalImages, setTotalImages] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const [showModal, setShowModal] = useState(false);
+  const [largeImageURL, setLargeImageURL] = useState('');
 
-  componentDidUpdate(prevProps, prevState) {
-    if (
-      prevState.searchQuery !== this.state.searchQuery ||
-      prevState.page !== this.state.page
-    ) {
-      this.fetchImages();
+  useEffect(() => {
+    if (!searchQuery) {
+      return;
     }
-  }
 
-  handleSearchSubmit = query => {
-    this.setState({ searchQuery: query, page: 1, images: [], totalImages: 0 });
+    const fetchImages = async () => {
+      setLoading(true);
+
+      try {
+        const response = await backend.requestImages(
+          searchQuery,
+          page,
+          imagesPerPage
+        );
+        setImages(prevImages => [...prevImages, ...response.data.hits]);
+        setTotalImages(response.data.totalHits);
+      } catch (err) {
+        setError(err);
+        if (verboseLogging) {
+          console.info('Error fetching images:', error);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchImages();
+  }, [searchQuery, page, verboseLogging, error]);
+
+  const handleSearchSubmit = query => {
+    setSearchQuery(query);
+    setPage(1);
+    setImages([]);
+    setTotalImages(0);
   };
 
-  fetchImages = async () => {
-    const { searchQuery, page } = this.state;
-
-    this.setState({ loading: true });
-
-    try {
-      const response = await backend.requestImages(
-        searchQuery,
-        page,
-        this.imagesPerPage
-      );
-      this.setState(prevState => ({
-        images: [...prevState.images, ...response.data.hits],
-        totalImages: response.data.totalHits,
-      }));
-    } catch (error) {
-      this.setState({ error });
-    } finally {
-      this.setState({ loading: false });
-    }
+  const handleLoadMore = () => {
+    setPage(prevPage => prevPage + 1);
   };
 
-  handleLoadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const openModal = largeImageURL => {
+    setShowModal(true);
+    setLargeImageURL(largeImageURL);
   };
 
-  openModal = largeImageURL => {
-    this.setState({ showModal: true, largeImageURL });
+  const closeModal = () => {
+    setShowModal(false);
+    setLargeImageURL('');
   };
 
-  closeModal = () => {
-    this.setState({ showModal: false, largeImageURL: '' });
-  };
-
-  render() {
-    const { images, totalImages, page, loading, showModal, largeImageURL } =
-      this.state;
-    return (
-      <div className={css.App}>
-        <Searchbar onSubmit={this.handleSearchSubmit} />
-        <ImageGallery>
-          {images.map(({ id, webformatURL, largeImageURL }) => (
-            <ImageGalleryItem
-              key={id}
-              src={webformatURL}
-              alt=""
-              onClick={() => this.openModal(largeImageURL)}
-            />
-          ))}
-        </ImageGallery>
-        {loading && <Loader size={80} color="#00BFFF" />}
-        {images.length >= this.imagesPerPage &&
-          page * this.imagesPerPage < totalImages &&
-          !loading && <Button onClick={this.handleLoadMore}>Load more</Button>}
-        {showModal && (
-          <Modal largeImageURL={largeImageURL} onClose={this.closeModal} />
-        )}
-      </div>
-    );
-  }
-}
+  return (
+    <div className={css.App}>
+      <Searchbar onSubmit={handleSearchSubmit} />
+      <ImageGallery>
+        {images.map(({ id, webformatURL, largeImageURL }) => (
+          <ImageGalleryItem
+            key={id}
+            src={webformatURL}
+            alt=""
+            onClick={() => openModal(largeImageURL)}
+          />
+        ))}
+      </ImageGallery>
+      {loading && <Loader size={80} color="#00BFFF" />}
+      {images.length >= imagesPerPage &&
+        page * imagesPerPage < totalImages &&
+        !loading && <Button onClick={handleLoadMore}>Load more</Button>}
+      {showModal && (
+        <Modal largeImageURL={largeImageURL} onClose={closeModal} />
+      )}
+    </div>
+  );
+};
 
 export { App };
