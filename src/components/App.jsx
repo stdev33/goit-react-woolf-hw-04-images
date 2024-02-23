@@ -9,8 +9,7 @@ import Modal from './Modal/Modal';
 import css from './App.module.css';
 
 const App = () => {
-  const imagesPerPage = 12;
-  const verboseLogging = false;
+  const imagesPerPage = 12; // also used in condition to render 'Load more' button
 
   const [images, setImages] = useState([]);
   const [totalImages, setTotalImages] = useState(0);
@@ -39,16 +38,13 @@ const App = () => {
         setTotalImages(response.data.totalHits);
       } catch (err) {
         setError(err);
-        if (verboseLogging) {
-          console.info('Error fetching images:', error);
-        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchImages();
-  }, [searchQuery, page, verboseLogging, error]);
+  }, [searchQuery, page]);
 
   const handleSearchSubmit = query => {
     setSearchQuery(query);
