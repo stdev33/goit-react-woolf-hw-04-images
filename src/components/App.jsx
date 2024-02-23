@@ -84,6 +84,9 @@ const App = () => {
       {images.length >= imagesPerPage &&
         page * imagesPerPage < totalImages &&
         !loading && <Button onClick={handleLoadMore}>Load more</Button>}
+      {error && (
+        <div className={css.Error}>An error occurred: {error.message}</div>
+      )}
       {showModal && (
         <Modal largeImageURL={largeImageURL} onClose={closeModal} />
       )}
